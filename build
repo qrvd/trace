@@ -1,0 +1,4 @@
+#!/bin/bash
+mkdir -p bin
+g++ -pedantic -Wall -lSDLmain -lSDL trace.cpp -o bin/trace
+
