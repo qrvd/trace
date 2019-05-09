@@ -39,17 +39,17 @@ bool exists(char *filename) {
 }
 
 // Constants
-const int GRID_W = 10;
-const int GRID_H = 10;
+const int GRID_W = 80;
+const int GRID_H = 80;
 const int NUM_CURSORS = GRID_H/2;
 
 const int WINDOW_FLAGS = SDL_DOUBLEBUF|SDL_HWSURFACE|SDL_RESIZABLE;
-const int WINDOW_DEFAULT_W = 320;
-const int WINDOW_DEFAULT_H = 320;
+const int WINDOW_DEFAULT_W = 640;
+const int WINDOW_DEFAULT_H = 640;
 
 // Variables
-int TILE_W = WINDOW_DEFAULT_W / GRID_W;
-int TILE_H = WINDOW_DEFAULT_H / GRID_H;
+Uint16 TILE_W = WINDOW_DEFAULT_W / GRID_W;
+Uint16 TILE_H = WINDOW_DEFAULT_H / GRID_H;
 int FILL_W = TILE_W/2;
 int FILL_H = TILE_H/2;
 int NUM_COLORS = 4;
@@ -112,11 +112,11 @@ bool move(int old_cx, int old_cy, int cx, int cy) {
 	c.filled = true;
 	Cell &oc = grid[old_cx+old_cy*GRID_W];
 	if (cx < old_cx) {
-		oc.conn.left.color = oc.color;
+		oc.conn.left.color = oc.color; 
 		oc.conn.left.on = true;
 	}
 	else if (cx > old_cx) {
-		oc.conn.right.color = oc.color;
+		oc.conn.right.color = oc.color; 
 		oc.conn.right.on = true;
 	}
 	else if (cy < old_cy) {
@@ -160,7 +160,7 @@ void tick(bool retrace, bool weave, bool jumpToOwn, bool moveBoth, bool gravity)
 			if (moveBoth) {
 				if (rand() % 2 == 0) {
 					vel_x = rand() % 2 == 0 ? 1 : -1;
-				}
+				}	
 				if (rand() % 2 == 0) {
 					vel_y = rand() % 2 == 0 ? 1 : -1;
 				}
@@ -249,20 +249,22 @@ void tick(bool retrace, bool weave, bool jumpToOwn, bool moveBoth, bool gravity)
 			fixConnections(x, y);
 }
 
-void drawRect(int x, int y, int w, int h) {
+void drawRect(Sint16 x, Sint16 y, Uint16 w, Uint16 h) {
 	SDL_Rect dstrect = {x,y,w,h};
 	SDL_FillRect(SDL_GetVideoSurface(),
 		&dstrect, SDL_MapRGB(
 			SDL_GetVideoSurface()->format, 255, 255, 255));
 }
 
-void drawRectColored(int x, int y, int w, int h, Uint32 color) {
+void drawRectColored(Sint16 x, Sint16 y, Uint16 w, Uint16 h, Uint16 color) {
 	SDL_Rect dstrect = {x,y,w,h};
 	SDL_FillRect(SDL_GetVideoSurface(), &dstrect, color);
 }
 
 void drawCursor(Cursor c) {
-	SDL_Rect dstrect = {c.x * TILE_W, c.y*TILE_H, TILE_W, TILE_H};
+	SDL_Rect dstrect = {
+		static_cast<Sint16>(c.x * TILE_W),
+		static_cast<Sint16>(c.y*TILE_H), TILE_W, TILE_H};
 	SDL_FillRect(SDL_GetVideoSurface(), &dstrect, c.color);
 }
 
@@ -311,8 +313,8 @@ void drawCellGapless(Cell c, int tx, int ty) {
 }
 
 void resetMaze() {
-	SDL_Surface *wd = SDL_GetVideoSurface();
 	SDL_WM_SetCaption("trace", nullptr);
+	SDL_Surface *wd = SDL_GetVideoSurface();
 
 	// Create colors
 	for (int i = 0; i < NUM_CURSORS; i++) {
@@ -355,6 +357,9 @@ bool completed() {
 
 void render(bool draw_cursors, bool debugging, bool gapless) {
 	SDL_Surface *wd = SDL_GetVideoSurface();
+	if (!wd) {
+		printf("render: %s\n", SDL_GetError());
+	}
 	SDL_FillRect(wd, nullptr, 0);
 	for (int y = 0; y < GRID_H; y++) {
 		for (int x = 0; x < GRID_W; x++) {
@@ -374,10 +379,12 @@ void render(bool draw_cursors, bool debugging, bool gapless) {
 			drawCursor(c);
 		}
 	}
-	SDL_Flip(wd);
+	if (SDL_Flip(wd) < 0) {
+		printf("SDL_Flip: %s\n", SDL_GetError());
+	}
 }
 
-void saveMaze(char *dirname) {
+void saveMaze(const char *dirname) {
 	char filename[256] = { 0 };
 	snprintf(filename, 256, "%s/%ld.bmp", dirname, time(nullptr));
 	if (exists(filename)) {
@@ -397,7 +404,7 @@ void saveMaze(char *dirname) {
 }
 
 void onResize(int width, int height) {
-	if (SDL_SetVideoMode(width, height, 0, WINDOW_FLAGS)) {
+	if (SDL_SetVideoMode(width, height, 0, WINDOW_FLAGS) < 0) {
 		TILE_W = max(1, width / GRID_W);
 		TILE_H = max(1, height / GRID_H);
 		FILL_W = max(1, TILE_W / 2);
@@ -455,11 +462,11 @@ struct options {
 int main(int argc, char **argv) {
 
 	// Configure
-	SDL_Init(SDL_INIT_EVERYTHING);
+	if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
+		printf("SDL_Init: %s\n", SDL_GetError());
 	SDL_WM_SetCaption("trace", nullptr);
 	SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 	onResize(WINDOW_DEFAULT_W, WINDOW_DEFAULT_H);
-	SDL_Surface *wd = SDL_GetVideoSurface();
 	srand(time(nullptr));
 	resetMaze();
 	printf("%d cursors\n", NUM_CURSORS);
@@ -476,7 +483,7 @@ int main(int argc, char **argv) {
 	bool completeFill = false;
 	bool moveBoth = false;
 	bool gravity = false;
-	unsigned fps = 60;
+	// unsigned fps = 60;
 	unsigned tick_fps = 20;
 	timer done_timer(SDL_GetTicks(), 10 * 1000);
 	timer tick_timer(SDL_GetTicks(), 1000 / tick_fps);
