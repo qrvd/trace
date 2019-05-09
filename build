@@ -1,4 +1,6 @@
 #!/bin/bash
+set -u
+
 mkdir -p bin
-g++ -pedantic -Wall -lSDLmain -lSDL trace.cpp -o bin/trace
+g++ "$(sdl-config --cflags --static-libs)" -pedantic -Wall -lSDLmain -lSDL trace.cpp -o bin/trace
 
