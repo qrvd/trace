@@ -404,7 +404,7 @@ void saveMaze(const char *dirname) {
 }
 
 void onResize(int width, int height) {
-	if (SDL_SetVideoMode(width, height, 0, WINDOW_FLAGS) < 0) {
+	if (SDL_SetVideoMode(width, height, 0, WINDOW_FLAGS) > 0) {
 		TILE_W = max(1, width / GRID_W);
 		TILE_H = max(1, height / GRID_H);
 		FILL_W = max(1, TILE_W / 2);
